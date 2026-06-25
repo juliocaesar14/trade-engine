@@ -1,0 +1,104 @@
+services:
+  # Node.js Application (Horizontally Scalable)
+  app:
+    build: .
+    # Removed container_name to allow scaling (--scale app=N)
+    restart: always
+    expose:
+      - "${PORT}"  # Expose internally only, nginx will load balance
+    environment:
+      - NODE_ENV=${NODE_ENV}
+      - PORT=${PORT}
+      - MYSQL_HOST=${MYSQL_HOST}
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+    depends_on:
+      - mysql
+      - redis
+    networks:
+      - twocents-network
+
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
+    container_name: twocents-mysql
+    restart: always
+    ports:
+      - "${HOST_MYSQL_PORT}:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - twocents-network
+
+  # Redis Cache
+  redis:
+    image: redis:alpine
+    container_name: twocents-redis
+    restart: always
+    ports:
+      - "${HOST_REDIS_PORT}:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - twocents-network
+
+  # Redis Commander - Redis Visualization
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: twocents-redis-commander
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      - redis
+    networks:
+      - twocents-network
+
+  # phpMyAdmin - MySQL Visualization
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: twocents-phpmyadmin
+    restart: always
+    ports:
+      - "8080:80"
+    environment:
+      - PMA_HOST=mysql
+      - PMA_PORT=3306
+      - PMA_USER=${MYSQL_USER}
+      - PMA_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD}
+    depends_on:
+      - mysql
+    networks:
+      - twocents-network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: twocents-nginx
+    restart: always
+    ports:
+      - "${HOST_NGINX_PORT}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - app
+    networks:
+      - twocents-network
+
+volumes:
+  mysql-data:
+  redis-data:
+
+networks:
+  twocents-network:
+    driver: bridge
+
