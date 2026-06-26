@@ -82,10 +82,14 @@ class MatchingEngine {
 
                     const side = order.side === 'buy' ? 'buy' : 'sell';
                     const bookKey = `orderbook:${order.instrument}:${side}`;
-                    const member = `${order.price}:${order.order_id}`;
+                    const member = `${order.order_id}:${timestamp}`;
                     
-                    // Add to order book ZSET (score is timestamp for time priority)
-                    pipeline.zadd(bookKey, timestamp, member);
+                    // For buy orders, use negative price for reverse ordering (highest first)
+                    // This must match RedisService.addOrderToBook's score convention
+                    const score = order.side === 'buy' ? -parseFloat(order.price) : parseFloat(order.price);
+                    
+                    // Add to order book ZSET (score is price; member is orderId:timestamp)
+                    pipeline.zadd(bookKey, score, member);
                     
                     // Cache order details for fast lookup
                     pipeline.hset(`order:${order.order_id}`, {
@@ -750,3 +754,4 @@ class MatchingEngine {
 }
 
 module.exports = MatchingEngine;
+

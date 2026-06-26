@@ -248,7 +248,7 @@ class SnapshotService {
         
         try {
             // Find latest snapshot
-            const snapshots = await DB.raw(`
+            const snapshots = await DB.query(`
                 SELECT * FROM order_book_snapshots
                 WHERE instrument = ?
                 ORDER BY snapshot_at DESC
@@ -261,7 +261,7 @@ class SnapshotService {
             }
             
             const snapshot = snapshots[0];
-            const snapshotData = JSON.parse(snapshot.snapshot_data);
+            const snapshotData = typeof snapshot.snapshot_data === "string" ? JSON.parse(snapshot.snapshot_data) : snapshot.snapshot_data;
             const { bids, asks, snapshot_at } = snapshotData;
             
             console.log(`📸 Loading snapshot for ${instrument} from ${snapshot_at}`);
@@ -275,7 +275,7 @@ class SnapshotService {
                     'buy',
                     parseFloat(bid.price),
                     bid.order_id,
-                    new Date(bid.created_at).getTime()
+                    new Date(bid.created_at instanceof Date ? bid.created_at.toISOString() : bid.created_at).getTime()
                 );
                 
                 // Also cache order details
@@ -290,7 +290,7 @@ class SnapshotService {
                     'sell',
                     parseFloat(ask.price),
                     ask.order_id,
-                    new Date(ask.created_at).getTime()
+                    new Date(ask.created_at instanceof Date ? ask.created_at.toISOString() : ask.created_at).getTime()
                 );
                 
                 // Also cache order details
@@ -299,7 +299,7 @@ class SnapshotService {
             }
             
             // Replay orders created AFTER snapshot
-            const newOrders = await DB.raw(`
+            const newOrders = await DB.query(`
                 SELECT * FROM orders
                 WHERE instrument = ?
                   AND status IN ('open', 'partially_filled')
@@ -356,7 +356,7 @@ class SnapshotService {
         
         try {
             // Query all open orders from MySQL
-            const orders = await DB.raw(`
+            const orders = await DB.query(`
                 SELECT * FROM orders
                 WHERE instrument = ?
                   AND status IN ('open', 'partially_filled')
@@ -440,7 +440,7 @@ class SnapshotService {
     async cleanupOldSnapshots(instrument) {
         try {
             // Delete old snapshots, keep only the most recent N
-            const deleted = await DB.raw(`
+            const deleted = await DB.query(`
                 DELETE FROM order_book_snapshots
                 WHERE instrument = ? 
                 AND snapshot_id NOT IN (
@@ -524,7 +524,7 @@ class SnapshotService {
      */
     async getSnapshotStats() {
         try {
-            const stats = await DB.raw(`
+            const stats = await DB.query(`
                 SELECT 
                     instrument,
                     COUNT(*) as snapshot_count,
@@ -543,4 +543,11 @@ class SnapshotService {
 }
 
 module.exports = SnapshotService;
+
+
+
+
+
+
+
 

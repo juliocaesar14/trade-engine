@@ -32,7 +32,7 @@ const http = require('http');
 // CONFIGURATION
 // ============================================================================
 
-const BASE_URL = 'http://localhost/api/orders';
+const BASE_URL = 'http://127.0.0.1/api/orders';
 const ORDERS_URL = `${BASE_URL}/orders`;
 const ORDERBOOK_URL = `${BASE_URL}/orderbook`;
 const TRADES_URL = `${BASE_URL}/trades`;
@@ -492,7 +492,7 @@ function createLoadTestOrder() {
         const startTime = Date.now();
         
         const options = {
-            hostname: 'localhost',
+            hostname: '127.0.0.1',
             port: 80,
             path: '/api/orders/orders',
             method: 'POST',
